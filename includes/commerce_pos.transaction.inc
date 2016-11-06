@@ -240,13 +240,14 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       );
 
       $base_price = commerce_price_component_load($line_item_wrapper->commerce_unit_price->value(), 'base_price');
+      $currency = commerce_currency_load();
 
       $line_item_element['price_edit'] = array(
         '#type' => 'textfield',
         '#title' => t('@price', array(
           '@price' => commerce_currency_format($base_price[0]['price']['amount'], $base_price[0]['price']['currency_code']),
         )),
-        '#default_value' => number_format($base_price[0]['price']['amount'] / 100, 2),
+        '#default_value' => number_format($base_price[0]['price']['amount'] / 100, 2, $currency['decimal_separator'], ''),
         '#size' => 5,
         '#maxlength' => 10,
         '#element_key' => 'line-item-change-price',
@@ -259,6 +260,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
         '#prefix' => '<div class="price-edit-wrapper line-item-col">',
         '#suffix' => '</div>',
       );
+      unset($currency);
 
       $line_item_element['quantity_wrapper_open'] = array(
         '#markup' => '<div class="quantity-wrapper line-item-col">',
@@ -600,6 +602,12 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           break;
 
         case 'line-item-change-price':
+          // First load the currency array.
+          $currency = commerce_currency_load();
+          // strip anything from the input other than numbers or the currency decimal separator
+          $pattern = "/[^0-9" . $currency['decimal_separator'] . "]/";
+          $triggering_element['#value'] = preg_replace($pattern, "", $triggering_element['#value']);
+          unset($currency);
           $transaction->setLineItemPrice($triggering_element['#line_item_id'], $triggering_element['#value'] * 100);
           break;
 
